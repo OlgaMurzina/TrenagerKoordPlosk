@@ -18,9 +18,9 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.coord = []
         self.ans = ''  # строка координат, которые ввел пользователь
         self.count_koord = 0 # счетчик координат,которые вввел пользователь
-        self.error = 0
+        self.error = 0  # счетчик допущенных ошибок
         self.images = []
-        self.count_finish = 0
+        self.count_finish = 0  # счетчик нажатий на кнопку Закончить работу
         self.o = ''  # оценка работы ученика
 
         # обработка нажатия кнопки-подтверждения ввода данных ребенка
@@ -84,19 +84,25 @@ class MyWidget(QMainWindow, Ui_MainWindow):
 
     def mark(self):
         # Выставление оценки ученику
-        print('Жду оценку')
-        if self.count_koord - self.error > 0:
-            if (self.count_koord - self.error) / self.count_koord > 0.85:
+        print('Жду оценку', 'err', self.error, 'koord', self.count_koord)
+        oc = (self.count_koord - self.error) / self.count_koord
+        if oc > 0:
+            if oc > 0.85:
                 self.o = '5'
-            elif 0.68 <= (self.count_koord - self.error) / self.kount_coord <= 0.85:
+                print(self.o)
+            elif oc > 0.67:
                 self.o = '4'
-            elif 0.5 <= (self.count_koord - self.error) / self.kount_coord <= 0.67:
+                print(self.o)
+            elif oc > 0.5:
                 self.o = '3'
+                print(self.o)
             else:
-                self.o = 'Нужно еще поработать с теорией'
+                self.o = 'Неплохо,\nно нужно еще поработать с теорией'
+                print(self.o)
         else:
-            self.o = 'Нужно еще поработать с теорией'
-        print(self.o)
+            self.o = 'Плохо,\nнужно еще поработать с теорией'
+            print(self.o)
+
         self.label_8.setWordWrap(True)
         self.label_8.setText(f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите еще раз кнопку 'Закончить работу'")
 
@@ -122,19 +128,23 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                                (self.fam, self.name)).fetchall()
             # запись результатов в таблицу
             if not res:
-                # не была нажата кнопка ОК в начале работы
+                # У нового ребенка не была нажата кнопка ОК в начале работы
                 print('*')
                 cur1.execute("""INSERT INTO childrens(familia, name) VALUES (?, ?)""", (self.fam, self.name))
-            else:
-                # внесение изменений в БД по ученику
-                id_im = cur1.execute("""SELECT ID FROM files WHERE image = ?""",
-                                     (self.comboBox.currentText(),)).fetchone()
-                print(id_im)
-                n = cur1.execute("""SELECT count FROM childrens WHERE familia = ? and name = ?""",
-                                 (self.fam, self.name)).fetchone()
-                cur1.execute("""UPDATE childrens SET count = ?, images = ?, mark = ? WHERE familia = ? and name = ?""",
-                             (n[0] + 1, id_im[0], self.o, self.fam, self.name))
-                print(*res)
+
+            # внесение изменений в БД по ученику после работы
+            id_im = cur1.execute("""SELECT ID FROM files WHERE image = ?""",
+                                 (self.comboBox.currentText(),)).fetchone()
+            print(id_im)
+            n = cur1.execute("""SELECT count, average_mark FROM childrens WHERE familia = ? and name = ?""",
+                             (self.fam, self.name)).fetchone()
+            n = list(n)
+            if len(n[1]) == 0 or len(n[1]) > 3:
+                n[1] = '0'
+            print(n)
+            cur1.execute("""UPDATE childrens SET count = ?, images = ?, average_mark = ? WHERE familia = ? and name = ?""",
+                         (n[0] + 1, id_im[0], str((int(n[1]) + int(self.o)) / 2), self.fam, self.name))
+            print(*res)
             con1.commit()
             sys.exit(app.exec_())
 
@@ -166,6 +176,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.coord.remove('')
         print(self.coord)
         self.f.close()
+        self.ans = ''
 
     def app_image(self):
         # блок для учителя - добавления нового/удаления старого рисунка в БД из программы - меню файл - добавить новый рисунок/удалить старый
