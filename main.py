@@ -145,18 +145,20 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         result = self.cur2.execute("""SELECT name_file FROM files
                             WHERE image = ?""", (self.comboBox.currentText(),)).fetchall()[0][0]
         # запрос на путь к файлу с координатами
+        print(result)
         result_1 = self.cur2.execute("""SELECT koord_file FROM files
                             WHERE image = ?""", (self.comboBox.currentText(),)).fetchall()[0][0]
+        print(result_1)
         # открытие графического файла по выбранному рисунку
         self.pixmap = QPixmap(f'{result}')
         # доработать увеличение размера до размера экрана
-        self.label_7.move(75, 10)
+        self.label_7.move(85, 0)
         size_window = self.label_7.size()
         self.label_7.setMaximumSize(size_window)
+        # Отображаем содержимое QPixmap в объек)те QLabel по размерам окна
         self.label_7.setPixmap(QPixmap(self.pixmap.scaled(self.label_7.size(), Qt.KeepAspectRatio)))
-        # Отображаем содержимое QPixmap в объек)те QLabel
-        # self.label_7.setPixmap(self.pixmap)
 
+        pass # ошибка файлов Уточка и Кот при выгрузке координат
         # связь рисунка с файлом из базы рисунков: название рисунка - ID - имя файла с координатами
         self.f = open(f'{result_1}', 'r')
         self.coord = self.f.read().split('\n')
