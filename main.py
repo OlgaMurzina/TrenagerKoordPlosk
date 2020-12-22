@@ -1,6 +1,8 @@
 import sqlite3
 import sys
 
+from PyQt5.QtCore import Qt
+
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
@@ -41,6 +43,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.pushButton.clicked.connect(self.run)
         # обработка нажатия ребенком кнопки Закончить
         self.pushButton_2.clicked.connect(self.finish)
+
 
     def run(self):
         # проверка наличия такого кортежа в файле рисунка и вердиткт - есть или нет
@@ -147,11 +150,12 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # открытие графического файла по выбранному рисунку
         self.pixmap = QPixmap(f'{result}')
         # доработать увеличение размера до размера экрана
-        self.label_7.move(100, 100)
+        self.label_7.move(75, 10)
         size_window = self.label_7.size()
         self.label_7.setMaximumSize(size_window)
+        self.label_7.setPixmap(QPixmap(self.pixmap.scaled(self.label_7.size(), Qt.KeepAspectRatio)))
         # Отображаем содержимое QPixmap в объек)те QLabel
-        self.label_7.setPixmap(self.pixmap)
+        # self.label_7.setPixmap(self.pixmap)
 
         # связь рисунка с файлом из базы рисунков: название рисунка - ID - имя файла с координатами
         self.f = open(f'{result_1}', 'r')
@@ -206,6 +210,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                          (n[0] + 1, id_im[0], self.o, self.fam, self.name))
             print(*res)
         con1.commit()
+
 
 
 app = QApplication(sys.argv)
