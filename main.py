@@ -1,13 +1,12 @@
+import os
 import sqlite3
 import sys
 
 from PyQt5.QtCore import Qt
-
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
 
 from design_form import Ui_MainWindow
-
 
 
 class MyWidget(QMainWindow, Ui_MainWindow):
@@ -17,33 +16,74 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.ans = set()
         self.coord = []
         self.ans = ''  # строка координат, которые ввел пользователь
-        self.count_koord = 0 # счетчик координат,которые вввел пользователь
+        self.count_koord = 0  # счетчик координат,которые вввел пользователь
         self.error = 0  # счетчик допущенных ошибок
         self.images = []
         self.count_finish = 0  # счетчик нажатий на кнопку Закончить работу
         self.o = ''  # оценка работы ученика
+        # вызов обработчика событий - в нем храним связи сигналы - слоты
+        self._connectAction()
+        # подключение к БД
+        self.db_connection()
+        self.change_img()
+        self.label_8.setWordWrap(True)
 
+    # создание подключения и курсора для работы с БД
+    def db_connection(self):
+        # создание подключения к БД
+        self.con = sqlite3.connect("SQLiteStudio\koord_pl.db")
+        # Создание курсора
+        self.cur = self.con.cursor()
+
+    # блок событий нажатия разных кнопок
+    def _connectAction(self):
         # обработка нажатия кнопки-подтверждения ввода данных ребенка
         self.pushButton_3.clicked.connect(self.ok)
-
-        # блок выбора рисунка для задания
-        # выбор рисунка по названию
-        self.con2 = sqlite3.connect("SQLiteStudio\koord_pl.db")
-        # Создание курсора
-        self.cur2 = self.con2.cursor()
-        self.images = list(map(lambda x: x[0], self.cur2.execute("""SELECT image FROM files WHERE ID > 0 """).fetchall()))
-        print(self.images)
-        self.comboBox.addItems(self.images)
-        # вызов загрузки стартового рисунка - первого в списке комбобокса
-        self.select_task(self.images[0][0])
-        # вызов обработчика выбора названия рисунка в комбобоксе
-        self.comboBox.activated.connect(self.select_task)
-
         # вызов обработчика нажатия кнопки Проверить
         self.pushButton.clicked.connect(self.run)
         # обработка нажатия ребенком кнопки Закончить
         self.pushButton_2.clicked.connect(self.finish)
+        # работа с меню программы
+        self.action_2.triggered.connect(self.addFile)
+        self.action_3.triggered.connect(self.delFile)
 
+    # обработка событий из строки Меню-Файл
+    def addFile(self):
+        # добавление файла к базе
+        fname = QFileDialog.getOpenFileName(self, 'Выбрать картинку по имени файла', '')[0]
+        # Подключение к БД
+        fname = fname.split("/")[-1]
+        name = f"{fname.split('.')[0]}"
+        koord = os.path.join('coord', f'{name}.txt')
+        fname = os.path.join('images', f'{name}.bmp')
+        print(name, fname, koord)
+        result = self.cur.execute("""SELECT id FROM files
+                                   WHERE image = ?""", (f'{name}',)).fetchone()
+        # запрос на путь к файлу с координатами
+        print(result)
+        if not result:
+            self.cur.execute("""INSERT INTO files(image, name_file, koord_file) VALUES (?, ?, ?)""",
+                             (name, fname, koord))
+            self.con.commit()
+            self.change_img()
+            # выдавать во всплывающем окне сообщение о том, что файл успешно добавлен в базу
+            self.label_8.setText('Файл успешно добавлен в базу данных')
+        else:
+            self.label_8.setText('В базе данных уже есть такой файл')
+
+    def delFile(self):
+        pass
+
+    def change_img(self):
+        # блок выбора рисунка из выпадающего списка, сформированного по БД
+        self.images = list(
+            map(lambda x: x[0], self.cur.execute("""SELECT image FROM files WHERE ID > 0 """).fetchall()))
+        print(self.images)
+        self.comboBox.addItems(self.images)
+        # вызов загрузки стартового рисунка - первого в списке комбобокса
+        self.select_task(self.images[0])
+        # вызов обработчика выбора названия рисунка в комбобоксе
+        self.comboBox.activated.connect(self.select_task)
 
     def run(self):
         # проверка наличия такого кортежа в файле рисунка и вердиткт - есть или нет
@@ -54,7 +94,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             # ввод координаты Y
             self.y = self.lineEdit.text()
             # сравнение координат с координатами из файла к выбранному рисунку
-            koord = str(self.x) +';' + str(self.y)
+            koord = str(self.x) + ';' + str(self.y)
             print(koord, self.coord)
             if not self.x or not self.y or not self.coord:
                 raise ValueError()
@@ -89,23 +129,19 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         if oc > 0:
             if oc > 0.85:
                 self.o = '5'
-                print(self.o)
             elif oc > 0.67:
                 self.o = '4'
-                print(self.o)
             elif oc > 0.5:
                 self.o = '3'
-                print(self.o)
             else:
                 self.o = 'Неплохо,\nно нужно еще поработать с теорией'
-                print(self.o)
         else:
             self.o = 'Плохо,\nнужно еще поработать с теорией'
-            print(self.o)
+        print(self.o)
 
         self.label_8.setWordWrap(True)
-        self.label_8.setText(f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите еще раз кнопку 'Закончить работу'")
-
+        self.label_8.setText(
+            f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите еще раз кнопку 'Закончить работу'")
 
     def finish(self):
         # нажатие кнопки Закончить работу с учетом повторного нажатия
@@ -113,73 +149,70 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.count_finish += 1
         if self.coord and self.count_finish == 1:
             self.label_8.setWordWrap(True)
-            self.label_8.setText("Вы не закончили уражнение. При повторном нажатии на кнопку 'Закончить работу' данные будут потеряны.")
+            self.label_8.setText(
+                "Вы не закончили уражнение. При повторном нажатии на кнопку 'Закончить работу' данные будут потеряны.")
         elif not self.coord and self.count_finish == 1:
             # Выставление оценки
             self.mark()
         else:
-            # Обновление информации в БД
-            # Подключение к БД
-            con1 = sqlite3.connect("SQLiteStudio\koord_pl.db")
-            # Создание курсора
-            cur1 = con1.cursor()
             # Выполнение запроса и получение всех результатов
-            res = cur1.execute("""SELECT ID FROM childrens WHERE familia = ? and name = ?""",
-                               (self.fam, self.name)).fetchall()
+            res = self.cur.execute("""SELECT ID FROM childrens WHERE familia = ? and name = ?""",
+                                   (self.fam, self.name)).fetchall()
             # запись результатов в таблицу
             if not res:
                 # У нового ребенка не была нажата кнопка ОК в начале работы
                 print('*')
-                cur1.execute("""INSERT INTO childrens(familia, name) VALUES (?, ?)""", (self.fam, self.name))
+                self.cur.execute("""INSERT INTO childrens(familia, name, count, average_mark) VALUES (?, ?, 1, 0)""", (self.fam, self.name))
 
             # внесение изменений в БД по ученику после работы
-            id_im = cur1.execute("""SELECT ID FROM files WHERE image = ?""",
-                                 (self.comboBox.currentText(),)).fetchone()
+            id_im = self.cur.execute("""SELECT ID FROM files WHERE image = ?""",
+                                     (self.comboBox.currentText(),)).fetchone()
             print(id_im)
-            n = cur1.execute("""SELECT count, average_mark FROM childrens WHERE familia = ? and name = ?""",
-                             (self.fam, self.name)).fetchone()
+            n = self.cur.execute("""SELECT count, average_mark FROM childrens WHERE familia = ? and name = ?""",
+                                 (self.fam, self.name)).fetchone()
             n = list(n)
-            if len(n[1]) == 0 or len(n[1]) > 3:
+            print(n)
+            if str(n[1]).isalpha():
                 n[1] = '0'
             print(n)
-            cur1.execute("""UPDATE childrens SET count = ?, images = ?, average_mark = ? WHERE familia = ? and name = ?""",
-                         (n[0] + 1, id_im[0], str((int(n[1]) + int(self.o)) / 2), self.fam, self.name))
+            self.cur.execute(
+                """UPDATE childrens SET count = ?, images = ?, average_mark = ? WHERE familia = ? and name = ?""",
+                (n[0] + 1, id_im[0], str((float(n[1]) + float(self.o)) / 2), self.fam, self.name))
             print(*res)
-            con1.commit()
+            self.con.commit()
             sys.exit(app.exec_())
 
     def select_task(self, text):
         # работа с базой рисунков - определение пути к файлу из БД
         # Подключение к БД
-        # выполнение запроса и получение списка всех рисунков для заполнения комбобокса
-        result = self.cur2.execute("""SELECT name_file FROM files
-                            WHERE image = ?""", (self.comboBox.currentText(),)).fetchall()[0][0]
-        # запрос на путь к файлу с координатами
+        # запрос на путь к файлу с рисунком
+        result = self.cur.execute("""SELECT name_file FROM files
+                            WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
         print(result)
-        result_1 = self.cur2.execute("""SELECT koord_file FROM files
-                            WHERE image = ?""", (self.comboBox.currentText(),)).fetchall()[0][0]
+        # запрос на путь к файлу с координатами
+        result_1 = self.cur.execute("""SELECT koord_file FROM files
+                            WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
         print(result_1)
         # открытие графического файла по выбранному рисунку
-        self.pixmap = QPixmap(f'{result}')
-        # доработать увеличение размера до размера экрана
+        self.pixmap = QPixmap(f'result')
+        # увеличение размера до размера экрана
         self.label_7.move(85, 0)
         size_window = self.label_7.size()
         self.label_7.setMaximumSize(size_window)
         # Отображаем содержимое QPixmap в объек)те QLabel по размерам окна
         self.label_7.setPixmap(QPixmap(self.pixmap.scaled(self.label_7.size(), Qt.KeepAspectRatio)))
-
-        pass # ошибка файлов Уточка и Кот при выгрузке координат
         # связь рисунка с файлом из базы рисунков: название рисунка - ID - имя файла с координатами
-        self.f = open(f'{result_1}', 'r')
-        self.coord = self.f.read().split('\n')
+
+        # проверка на существование файла с координатами к рисунку!!!!!
+        # если рисунок есть, а координат нет, то удалять рисунок из базы!!!!
+        self.coord = open(f'{result_1}', 'r').read().split('\n')
         self.coord = set([a.strip('#') for a in self.coord])
-        self.coord.remove('')
+        if '' in self.coord:
+            self.coord.remove('')
         print(self.coord)
-        self.f.close()
         self.ans = ''
 
-    def app_image(self):
-        # блок для учителя - добавления нового/удаления старого рисунка в БД из программы - меню файл - добавить новый рисунок/удалить старый
+    class NameError(Exception):
         pass
 
     def ok(self):
@@ -191,42 +224,37 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         print(self.name)
         # проверка корректности ввода фамилии и имени
         try:
-            if self.fam.isalpha() and self.name.isalpha():
-                pass
+            if not self.fam.isalpha() and not self.name.isalpha():
+                mess = 'Ошибка при вводе имени и фамилии: присутствуют посторонние символы!'
+                raise ValueError(mess)
             elif self.fam.isalpha() and not self.name.isalpha():
-                pass
+                mess = 'Ошибка при вводе имени: присутствуют посторонние символы!'
+                raise ValueError(mess)
             elif self.name.isalpha() and not self.fam.isalpha():
-                pass
+                mess = 'Ошибка при вводе фамилии: присутствуют посторонние символы!'
+                raise ValueError(mess)
             else:
-                pass
+                # поиск ребенка по базе - если есть, то фиксируем ID, если нет, то добавляем в базу новый ID и данные
+                # Выполнение запроса и получение всех результатов
+                res = self.cur.execute("""SELECT ID FROM childrens WHERE familia = ? and name = ?""",
+                                       (self.fam, self.name)).fetchall()
+                print(res)
+                if not res:
+                    print('*')
+                    self.con.execute(
+                        """INSERT INTO childrens(familia, name, count, images, average_mark) VALUES (?, ?, 0, 1, 0)""",
+                        (self.fam, self.name))
+
+                self.con.commit()
         except ValueError:
-            pass
+            self.label_8.setText(f"Ошибка! {mess}")
 
-        # поиск ребенка по базе - если есть, то фиксируем ID, если нет, то добавляем в базу новый ID и данные
-        # Подключение к БД
-        con1 = sqlite3.connect("SQLiteStudio\koord_pl.db")
-        # Создание курсора
-        cur1 = con1.cursor()
-        # Выполнение запроса и получение всех результатов
-        res = cur1.execute("""SELECT ID FROM childrens WHERE familia = ? and name = ?""",
-                           (self.fam, self.name)).fetchall()
-        print(res)
-        if not res:
-            print('*')
-            cur1.execute("""INSERT INTO childrens(familia, name, count, images) VALUES (?, ?, 0, 1)""", (self.fam, self.name))
-        else:
-            id_im = cur1.execute("""SELECT ID FROM files WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()
-            print(id_im)
-            n = cur1.execute("""SELECT count FROM childrens WHERE familia = ? and name = ?""",
-                         (self.fam, self.name)).fetchone()
-            cur1.execute("""UPDATE childrens SET count = ?, images = ?, mark = ? WHERE familia = ? and name = ?""",
-                         (n[0] + 1, id_im[0], self.o, self.fam, self.name))
-            print(*res)
-        con1.commit()
-
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
 
 
 app = QApplication(sys.argv)
 ex = MyWidget()
 ex.show()
+sys.excepthook = except_hook
 sys.exit(app.exec_())

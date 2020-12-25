@@ -328,10 +328,8 @@ p, li { white-space: pre-wrap; }
     <property name="title">
      <string>Файл</string>
     </property>
-    <addaction name="action"/>
     <addaction name="action_2"/>
     <addaction name="action_3"/>
-    <addaction name="action_4"/>
    </widget>
    <widget class="QMenu" name="menu_2">
     <property name="title">
@@ -353,7 +351,7 @@ p, li { white-space: pre-wrap; }
   </action>
   <action name="action_3">
    <property name="text">
-    <string>Сохранить файл</string>
+    <string>Удалить файл</string>
    </property>
   </action>
   <action name="action_4">
