@@ -156,13 +156,14 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             self.mark()
         else:
             # Выполнение запроса и получение всех результатов
-            res = self.cur.execute("""SELECT ID FROM childrens WHERE familia = ? and name = ?""",
+            res = self.cur.execute("""SELECT ID, count FROM childrens WHERE familia = ? and name = ?""",
                                    (self.fam, self.name)).fetchall()
             # запись результатов в таблицу
             if not res:
                 # У нового ребенка не была нажата кнопка ОК в начале работы
                 print('*')
-                self.cur.execute("""INSERT INTO childrens(familia, name, count, average_mark) VALUES (?, ?, 1, 0)""", (self.fam, self.name))
+                self.cur.execute("""INSERT INTO childrens(familia, name, count) VALUES (?, ?, 1)""",
+                                 (self.fam, self.name))
 
             # внесение изменений в БД по ученику после работы
             id_im = self.cur.execute("""SELECT ID FROM files WHERE image = ?""",
@@ -174,6 +175,8 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             print(n)
             if str(n[1]).isalpha():
                 n[1] = '0'
+            elif not n[1]:
+                n[1] = self.o
             print(n)
             self.cur.execute(
                 """UPDATE childrens SET count = ?, images = ?, average_mark = ? WHERE familia = ? and name = ?""",
@@ -194,7 +197,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                             WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
         print(result_1)
         # открытие графического файла по выбранному рисунку
-        self.pixmap = QPixmap(f'result')
+        self.pixmap = QPixmap(f'{result}')
         # увеличение размера до размера экрана
         self.label_7.move(85, 0)
         size_window = self.label_7.size()
@@ -211,9 +214,6 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             self.coord.remove('')
         print(self.coord)
         self.ans = ''
-
-    class NameError(Exception):
-        pass
 
     def ok(self):
         # ввод фамилии ребенка
@@ -242,12 +242,13 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                 if not res:
                     print('*')
                     self.con.execute(
-                        """INSERT INTO childrens(familia, name, count, images, average_mark) VALUES (?, ?, 0, 1, 0)""",
+                        """INSERT INTO childrens(familia, name) VALUES (?, ?)""",
                         (self.fam, self.name))
 
                 self.con.commit()
         except ValueError:
             self.label_8.setText(f"Ошибка! {mess}")
+
 
 def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
