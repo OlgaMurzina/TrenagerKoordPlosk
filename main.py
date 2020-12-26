@@ -4,7 +4,7 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 
 from design_form import Ui_MainWindow
 
@@ -27,6 +27,9 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.db_connection()
         self.change_img()
         self.label_8.setWordWrap(True)
+        self.msgBox = QMessageBox()
+        self.fam = None
+        self.mess = 'Error!'
 
     # создание подключения и курсора для работы с БД
     def db_connection(self):
@@ -46,30 +49,45 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # работа с меню программы
         self.action_2.triggered.connect(self.addFile)
         self.action_3.triggered.connect(self.delFile)
+        self.action_5.triggered.connect(self.viuwer)
 
     # обработка событий из строки Меню-Файл
     def addFile(self):
         # добавление файла к базе
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать картинку по имени файла', '')[0]
+        fname = QFileDialog.getOpenFileName(None, 'Выбрать картинку по имени файла')[0]
         # Подключение к БД
-        fname = fname.split("/")[-1]
-        name = f"{fname.split('.')[0]}"
-        koord = os.path.join('coord', f'{name}.txt')
-        fname = os.path.join('images', f'{name}.bmp')
-        print(name, fname, koord)
-        result = self.cur.execute("""SELECT id FROM files
-                                   WHERE image = ?""", (f'{name}',)).fetchone()
-        # запрос на путь к файлу с координатами
-        print(result)
-        if not result:
-            self.cur.execute("""INSERT INTO files(image, name_file, koord_file) VALUES (?, ?, ?)""",
-                             (name, fname, koord))
-            self.con.commit()
-            self.change_img()
-            # выдавать во всплывающем окне сообщение о том, что файл успешно добавлен в базу
-            self.label_8.setText('Файл успешно добавлен в базу данных')
-        else:
-            self.label_8.setText('В базе данных уже есть такой файл')
+        try:
+            if not fname:
+                self.mess = 'Вы не выбрали файл!'
+                raise ValueError(self.mess)
+            else:
+                fname = fname.split("/")[-1]
+                name = f"{fname.split('.')[0]}"
+                koord = os.path.join('coord', f'{name}.txt')
+                fname = os.path.join('images', f'{name}.bmp')
+                print(name, fname, koord)
+                result = self.cur.execute("""SELECT id FROM files
+                                           WHERE image = ?""", (f'{name}',)).fetchone()
+                # запрос на путь к файлу с координатами
+                print(result)
+
+                if not result:
+                    if os.path.exists(f'{fname}') and os.path.exists(f'{koord}'):
+                        self.cur.execute("""INSERT INTO files(image, name_file, koord_file) VALUES (?, ?, ?)""",
+                                         (name, fname, koord))
+                        self.con.commit()
+                        self.change_img()
+                        # выдавать во всплывающем окне сообщение о том, что файл успешно добавлен в базу
+                        self.msgBox.setText("Файл успешно добавлен в базу данных")
+                    else:
+                        self.mess = "Рисунок с таким именем не подходит для нашей программы :("
+                        raise ValueError(self.mess)
+                else:
+                    self.msgBox.setText("Этот файл уже есть в базе данных")
+                self.msgBox.setWindowTitle("Добавление файла")
+                self.msgBox.exec()
+        except ValueError:
+            self.err()
 
     def delFile(self):
         # удаление записи о рисунке из БД
@@ -77,7 +95,16 @@ class MyWidget(QMainWindow, Ui_MainWindow):
 
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
-        pass
+        result = self.cur.execute("""SELECT familia, name, count, average_mark FROM childrens""").fetchall()
+        print(result)
+        text = 'Фамилия Имя Вход Оценка\n'
+        for x in result:
+            text += x[0] + ' ' + x[1] + '   ' + str(x[2]) + '   ' + str(x[3]) + '\n'
+        print(text)
+        self.msgBox.setWindowTitle("Ответ на запрос:")
+        # self.msgBox.resize(200, 200)
+        self.msgBox.setText(text)
+        self.msgBox.exec()
 
     def change_img(self):
         # блок выбора рисунка из выпадающего списка, сформированного по БД
@@ -129,47 +156,62 @@ class MyWidget(QMainWindow, Ui_MainWindow):
 
     def mark(self):
         # Выставление оценки ученику
-        print('Жду оценку', 'err', self.error, 'koord', self.count_koord)
-        oc = (self.count_koord - self.error) / self.count_koord
-        if oc > 0:
-            if oc > 0.85:
-                self.o = '5'
-            elif oc > 0.67:
-                self.o = '4'
-            elif oc > 0.5:
-                self.o = '3'
+        try:
+            if not self.count_koord:
+                self.mess = "Работа не начата. Оценить невозможно!"
+                raise ValueError(self.mess)
+            print('Жду оценку', 'err', self.error, 'koord', self.count_koord)
+            oc = (self.count_koord - self.error) / self.count_koord
+            if oc > 0:
+                if oc > 0.85:
+                    self.o = '5'
+                elif oc > 0.67:
+                    self.o = '4'
+                elif oc > 0.5:
+                    self.o = '3'
+                else:
+                    self.o = 'Неплохо,\nно нужно еще поработать с теорией'
             else:
-                self.o = 'Неплохо,\nно нужно еще поработать с теорией'
-        else:
-            self.o = 'Плохо,\nнужно еще поработать с теорией'
-        print(self.o)
-
-        # self.label_8.setWordWrap(True)
-        self.label_8.setText(
-            f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите еще раз кнопку 'Закончить работу'")
+                self.o = 'Плохо,\nнужно еще поработать с теорией'
+            print(self.o)
+            t = f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите кнопку 'Закончить работу'"
+            self.msgBox.setWindowTitle("Завершение работы")
+            self.msgBox.setText(f'{t}')
+            self.msgBox.exec()
+        except ValueError:
+            self.err()
 
     def finish(self):
         # нажатие кнопки Закончить работу с учетом повторного нажатия
         # в идеале - диалоговое окно про все равно закончить
         self.count_finish += 1
-        if self.coord and self.count_finish == 1:
-            self.label_8.setWordWrap(True)
-            self.label_8.setText(
-                "Вы не закончили уражнение. При повторном нажатии на кнопку 'Закончить работу' данные будут потеряны.")
+        self.msgBox.setWindowTitle("Завершение работы")
+        t = 'Спасибо за работу! Нажмите "Закончить работу"'
+        if not self.fam:
+            t = "Нет данных: введите свою фамилию и имя!"
+            self.msgBox.setWindowTitle("Данные ребенка")
+            self.count_finish = 0
+        elif self.count_koord == 0 and self.count_finish == 1:
+            t = "Работа не началась. Чтобы выйти из программы, нажмите 'Ok'.Чтобы продолжить, нажмите 'Cancel'"
+            self.msgBox.setWindowTitle("Завершение работы")
+            self.msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            self.msgBox.buttonClicked.connect(self.msgbtn)
+        elif self.coord and self.count_finish == 1:
+            self.count_finish = 0
+            t = "Вы не закончили уражнение. Чтобы выйти из программы, нажмите 'Ok'.Чтобы продолжить, нажмите 'Cancel'"
+            self.msgBox.setWindowTitle("Завершение работы")
+            self.msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            self.msgBox.buttonClicked.connect(self.msgbtn)
         elif not self.coord and self.count_finish == 1:
             # Выставление оценки
             self.mark()
-        else:
             # Выполнение запроса и получение всех результатов
             res = self.cur.execute("""SELECT ID, count FROM childrens WHERE familia = ? and name = ?""",
                                    (self.fam, self.name)).fetchall()
             # запись результатов в таблицу
             if not res:
                 # У нового ребенка не была нажата кнопка ОК в начале работы
-                print('*')
-                self.cur.execute("""INSERT INTO childrens(familia, name, count) VALUES (?, ?, 1)""",
-                                 (self.fam, self.name))
-
+                self.ok()
             # внесение изменений в БД по ученику после работы
             id_im = self.cur.execute("""SELECT ID FROM files WHERE image = ?""",
                                      (self.comboBox.currentText(),)).fetchone()
@@ -186,18 +228,33 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                 (n[0] + 1, id_im[0], str((float(n[1]) + float(self.o)) / 2), self.fam, self.name))
             print(*res)
             self.con.commit()
+            t = 'Данные о работе успешно внесены в базу данных!'
+            self.msgBox.setWindowTitle("Завершение работы")
+            self.msgBox.setIcon(QMessageBox.Information)
+            self.msgBox.setText(f'{t}')
+            self.msgBox.exec()
             sys.exit(app.exec_())
+        self.msgBox.setIcon(QMessageBox.Information)
+        self.msgBox.setText(f'{t}')
+        self.msgBox.exec()
+
+    def msgbtn(self, i):
+        #
+        if i.text() == 'OK':
+            sys.exit(app.exec_())
+        else:
+            self.count_finish = 0
 
     def select_task(self, text):
         # работа с базой рисунков - определение пути к файлу из БД
         # Подключение к БД
         # запрос на путь к файлу с рисунком
         result = self.cur.execute("""SELECT name_file FROM files
-                            WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
+                                WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
         print(result)
         # запрос на путь к файлу с координатами
         result_1 = self.cur.execute("""SELECT koord_file FROM files
-                            WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
+                                WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
         print(result_1)
         # открытие графического файла по выбранному рисунку
         self.pixmap = QPixmap(f'{result}')
@@ -218,6 +275,13 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         print(self.coord)
         self.ans = ''
 
+    def err(self):
+        #
+        self.msgBox.setIcon(QMessageBox.Warning)
+        self.msgBox.setWindowTitle("Ошибка!")
+        self.msgBox.setText(f'{self.mess}')
+        self.msgBox.exec()
+
     def ok(self):
         # ввод фамилии ребенка
         self.fam = self.lineEdit_3.text()
@@ -227,15 +291,24 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         print(self.name)
         # проверка корректности ввода фамилии и имени
         try:
-            if not self.fam.isalpha() and not self.name.isalpha():
-                mess = 'Ошибка при вводе имени и фамилии: присутствуют посторонние символы!'
-                raise ValueError(mess)
+            if not self.fam and self.name:
+                self.mess = 'Не введены фамилия и имя ребенка!'
+                raise ValueError(self.mess)
+            elif not self.fam:
+                self.mess = 'Не введена фамилия ребенка!'
+                raise ValueError(self.mess)
+            elif not self.name:
+                self.mess = 'Не введено имя ребенка!'
+                raise ValueError(self.mess)
+            elif not self.fam.isalpha() and not self.name.isalpha():
+                self.mess = 'Ошибка при вводе имени и фамилии: присутствуют посторонние символы!'
+                raise ValueError(self.mess)
             elif self.fam.isalpha() and not self.name.isalpha():
-                mess = 'Ошибка при вводе имени: присутствуют посторонние символы!'
-                raise ValueError(mess)
+                self.mess = 'Ошибка при вводе имени: присутствуют посторонние символы!'
+                raise ValueError(self.mess)
             elif self.name.isalpha() and not self.fam.isalpha():
-                mess = 'Ошибка при вводе фамилии: присутствуют посторонние символы!'
-                raise ValueError(mess)
+                self.mess = 'Ошибка при вводе фамилии: присутствуют посторонние символы!'
+                raise ValueError(self.mess)
             else:
                 # поиск ребенка по базе - если есть, то фиксируем ID, если нет, то добавляем в базу новый ID и данные
                 # Выполнение запроса и получение всех результатов
@@ -247,10 +320,16 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                     self.con.execute(
                         """INSERT INTO childrens(familia, name) VALUES (?, ?)""",
                         (self.fam, self.name))
-
+                    self.mess = 'Фамилия и имя успешно внесены в базу данных!'
+                else:
+                    self.mess = 'Фамилия и имя уже есть в базе данных :)'
                 self.con.commit()
+            self.msgBox.setIcon(QMessageBox.Information)
+            self.msgBox.setWindowTitle("Ввод данных")
+            self.msgBox.setText(f'{self.mess}')
+            self.msgBox.exec()
         except ValueError:
-            self.label_8.setText(f"Ошибка! {mess}")
+            self.err()
 
 
 def except_hook(cls, exception, traceback):
