@@ -178,9 +178,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                                  (self.fam, self.name)).fetchone()
             n = list(n)
             print(n)
-            if str(n[1]).isalpha():
-                n[1] = '0'
-            elif not n[1]:
+            if not n[1]:
                 n[1] = self.o
             print(n)
             self.cur.execute(
