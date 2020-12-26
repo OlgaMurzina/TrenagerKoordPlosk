@@ -72,6 +72,11 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             self.label_8.setText('В базе данных уже есть такой файл')
 
     def delFile(self):
+        # удаление записи о рисунке из БД
+        pass
+
+    def viuwer(self):
+        # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
         pass
 
     def change_img(self):
@@ -139,7 +144,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             self.o = 'Плохо,\nнужно еще поработать с теорией'
         print(self.o)
 
-        self.label_8.setWordWrap(True)
+        # self.label_8.setWordWrap(True)
         self.label_8.setText(
             f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите еще раз кнопку 'Закончить работу'")
 

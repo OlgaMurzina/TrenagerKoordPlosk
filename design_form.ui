@@ -330,6 +330,7 @@ p, li { white-space: pre-wrap; }
     </property>
     <addaction name="action_2"/>
     <addaction name="action_3"/>
+    <addaction name="action_5"/>
    </widget>
    <widget class="QMenu" name="menu_2">
     <property name="title">
@@ -357,6 +358,11 @@ p, li { white-space: pre-wrap; }
   <action name="action_4">
    <property name="text">
     <string>Сохранить рисунок</string>
+   </property>
+  </action>
+  <action name="action_5">
+   <property name="text">
+    <string>Получить данные</string>
    </property>
   </action>
  </widget>
