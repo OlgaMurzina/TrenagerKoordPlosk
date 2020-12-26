@@ -4,7 +4,7 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QListWidget, QListWidgetItem
 
 from design_form import Ui_MainWindow
 
@@ -28,6 +28,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.change_img()
         self.label_8.setWordWrap(True)
         self.msgBox = QMessageBox()
+        self.lstWidget = QListWidget()
         self.fam = None
         self.mess = 'Error!'
 
@@ -66,14 +67,14 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                 koord = os.path.join('coord', f'{name}.txt')
                 fname = os.path.join('images', f'{name}.bmp')
                 print(name, fname, koord)
-                result = self.cur.execute("""SELECT id FROM files
+                result = self.cur.execute("""SELECT id, del FROM files
                                            WHERE image = ?""", (f'{name}',)).fetchone()
                 # запрос на путь к файлу с координатами
                 print(result)
 
                 if not result:
                     if os.path.exists(f'{fname}') and os.path.exists(f'{koord}'):
-                        self.cur.execute("""INSERT INTO files(image, name_file, koord_file) VALUES (?, ?, ?)""",
+                        self.cur.execute("""INSERT INTO files(image, name_file, koord_file, del) VALUES (?, ?, ?, 0)""",
                                          (name, fname, koord))
                         self.con.commit()
                         self.change_img()
@@ -83,15 +84,29 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                         self.mess = "Рисунок с таким именем не подходит для нашей программы :("
                         raise ValueError(self.mess)
                 else:
-                    self.msgBox.setText("Этот файл уже есть в базе данных")
+                    if result[1] == 1:
+                        self.cur.execute("""UPDATE files SET del = ? WHERE id = ?""",
+                                         (0, result[0]))
+                        self.con.commit()
+                        self.change_img()
+                        # выдавать во всплывающем окне сообщение о том, что файл успешно добавлен в базу
+                        self.msgBox.setText("Файл успешно добавлен в базу данных")
+                    else:
+                        self.msgBox.setText("Этот файл уже есть в базе данных")
                 self.msgBox.setWindowTitle("Добавление файла")
                 self.msgBox.exec()
-        except ValueError:
+        except ValueError as e:
             self.err()
 
     def delFile(self):
         # удаление записи о рисунке из БД
-        pass
+        self.lstWidget = QListWidget()
+        self.lstWidget.addItems(self.images)
+        self.lstWidget.itemClicked.connect(self._on_item_clicked)
+        self.lstWidget.show()
+
+    def _on_item_clicked(item: QListWidgetItem):
+        print('Item clicked:', item.text())
 
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
