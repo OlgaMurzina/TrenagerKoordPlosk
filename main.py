@@ -4,7 +4,7 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QListWidget
 
 from design_form import Ui_MainWindow
 
@@ -105,8 +105,14 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.lstWidget.itemClicked.connect(self._on_item_clicked)
         self.lstWidget.show()
 
-    def _on_item_clicked(item: QListWidgetItem):
+    def _on_item_clicked(self, item):
         print('Item clicked:', item.text())
+        self.cur.execute("""UPDATE files SET del = ? WHERE image = ?""", (1, item.text()))
+        self.con.commit()
+        self.msgBox.setText("Файл удален из базы данных")
+        self.msgBox.setWindowTitle("Удаление файла")
+        self.msgBox.exec()
+        self.change_img()
 
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
@@ -124,7 +130,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
     def change_img(self):
         # блок выбора рисунка из выпадающего списка, сформированного по БД
         self.images = list(
-            map(lambda x: x[0], self.cur.execute("""SELECT image FROM files WHERE ID > 0 """).fetchall()))
+            map(lambda x: x[0], self.cur.execute("""SELECT image FROM files WHERE del = 0 """).fetchall()))
         print(self.images)
         self.comboBox.addItems(self.images)
         # вызов загрузки стартового рисунка - первого в списке комбобокса
