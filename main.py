@@ -66,12 +66,9 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                 name = f"{fname.split('.')[0]}"
                 koord = os.path.join('coord', f'{name}.txt')
                 fname = os.path.join('images', f'{name}.bmp')
-                print(name, fname, koord)
                 result = self.cur.execute("""SELECT id, del FROM files
                                            WHERE image = ?""", (f'{name}',)).fetchone()
                 # запрос на путь к файлу с координатами
-                print(result)
-
                 if not result:
                     if os.path.exists(f'{fname}') and os.path.exists(f'{koord}'):
                         self.cur.execute("""INSERT INTO files(image, name_file, koord_file, del) VALUES (?, ?, ?, 0)""",
@@ -106,7 +103,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.lstWidget.show()
 
     def _on_item_clicked(self, item):
-        print('Item clicked:', item.text())
+        # обработка выбора файла на удаление и пометка файла в базе флажком
         self.cur.execute("""UPDATE files SET del = ? WHERE image = ?""", (1, item.text()))
         self.con.commit()
         self.msgBox.setText("Файл удален из базы данных")
@@ -117,11 +114,9 @@ class MyWidget(QMainWindow, Ui_MainWindow):
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
         result = self.cur.execute("""SELECT familia, name, count, average_mark FROM childrens""").fetchall()
-        print(result)
         text = 'Фамилия Имя Вход Оценка\n'
         for x in result:
             text += x[0] + ' ' + x[1] + '   ' + str(x[2]) + '   ' + str(x[3]) + '\n'
-        print(text)
         self.msgBox.setWindowTitle("Ответ на запрос:")
         # self.msgBox.resize(200, 200)
         self.msgBox.setText(text)
@@ -131,7 +126,6 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # блок выбора рисунка из выпадающего списка, сформированного по БД
         self.images = list(
             map(lambda x: x[0], self.cur.execute("""SELECT image FROM files WHERE del = 0 """).fetchall()))
-        print(self.images)
         self.comboBox.addItems(self.images)
         # вызов загрузки стартового рисунка - первого в списке комбобокса
         self.select_task(self.images[0])
@@ -148,7 +142,6 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             self.y = self.lineEdit.text()
             # сравнение координат с координатами из файла к выбранному рисунку
             koord = str(self.x) + ';' + str(self.y)
-            print(koord, self.coord)
             if not self.x or not self.y or not self.coord:
                 raise ValueError()
             # выставление оценки, если все координаты введены или сообщение о коорректоности ответа
@@ -156,13 +149,11 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             elif koord in self.coord:
                 self.count_koord += 1
                 self.ans += '(' + str(koord) + ') '
-                print(self.ans)
                 self.label_8.setText(f"OK {koord}")
                 self.label_9.setWordWrap(True)
                 self.label_9.setText(f"{self.ans}")
+                # удаление кортежа из set, чтобы понимать, совершен ли полный обход
                 self.coord.remove(koord)
-                # внесение кортежа в set по координатам файла, чтобы понимать, совершен ли полный обход
-                print(self.coord)
             else:
                 # обработка неверного ответа
                 if str(koord) in self.ans:
@@ -181,7 +172,6 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             if not self.count_koord:
                 self.mess = "Работа не начата. Оценить невозможно!"
                 raise ValueError(self.mess)
-            print('Жду оценку', 'err', self.error, 'koord', self.count_koord)
             oc = (self.count_koord - self.error) / self.count_koord
             if oc > 0:
                 if oc > 0.85:
@@ -194,7 +184,6 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                     self.o = 'Неплохо,\nно нужно еще поработать с теорией'
             else:
                 self.o = 'Плохо,\nнужно еще поработать с теорией'
-            print(self.o)
             t = f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите кнопку 'Закончить работу'"
             self.msgBox.setWindowTitle("Завершение работы")
             self.msgBox.setText(f'{t}')
@@ -236,18 +225,15 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             # внесение изменений в БД по ученику после работы
             id_im = self.cur.execute("""SELECT ID FROM files WHERE image = ?""",
                                      (self.comboBox.currentText(),)).fetchone()
-            print(id_im)
             n = self.cur.execute("""SELECT count, average_mark FROM childrens WHERE familia = ? and name = ?""",
                                  (self.fam, self.name)).fetchone()
             n = list(n)
-            print(n)
             if not n[1]:
                 n[1] = self.o
-            print(n)
+            # обновление записи об ученике в БД
             self.cur.execute(
                 """UPDATE childrens SET count = ?, images = ?, average_mark = ? WHERE familia = ? and name = ?""",
                 (n[0] + 1, id_im[0], str((float(n[1]) + float(self.o)) / 2), self.fam, self.name))
-            print(*res)
             self.con.commit()
             t = 'Данные о работе успешно внесены в базу данных!'
             self.msgBox.setWindowTitle("Завершение работы")
@@ -260,7 +246,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.msgBox.exec()
 
     def msgbtn(self, i):
-        #
+        # обработка кнопки выхода из программы - ОК и Cancel
         if i.text() == 'OK':
             sys.exit(app.exec_())
         else:
@@ -272,11 +258,9 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # запрос на путь к файлу с рисунком
         result = self.cur.execute("""SELECT name_file FROM files
                                 WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
-        print(result)
         # запрос на путь к файлу с координатами
         result_1 = self.cur.execute("""SELECT koord_file FROM files
                                 WHERE image = ?""", (self.comboBox.currentText(),)).fetchone()[0]
-        print(result_1)
         # открытие графического файла по выбранному рисунку
         self.pixmap = QPixmap(f'{result}')
         # увеличение размера до размера экрана
@@ -293,7 +277,6 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.coord = set([a.strip('#') for a in self.coord])
         if '' in self.coord:
             self.coord.remove('')
-        print(self.coord)
         self.ans = ''
 
     def err(self):
@@ -306,10 +289,8 @@ class MyWidget(QMainWindow, Ui_MainWindow):
     def ok(self):
         # ввод фамилии ребенка
         self.fam = self.lineEdit_3.text()
-        print(self.fam)
         # ввод имени ребенка
         self.name = self.lineEdit_4.text()
-        print(self.name)
         # проверка корректности ввода фамилии и имени
         try:
             if not self.fam and self.name:
@@ -335,9 +316,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                 # Выполнение запроса и получение всех результатов
                 res = self.cur.execute("""SELECT ID FROM childrens WHERE familia = ? and name = ?""",
                                        (self.fam, self.name)).fetchall()
-                print(res)
                 if not res:
-                    print('*')
                     self.con.execute(
                         """INSERT INTO childrens(familia, name) VALUES (?, ?)""",
                         (self.fam, self.name))
