@@ -336,6 +336,7 @@ p, li { white-space: pre-wrap; }
     <property name="title">
      <string>О программе</string>
     </property>
+    <addaction name="action_6"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -363,6 +364,11 @@ p, li { white-space: pre-wrap; }
   <action name="action_5">
    <property name="text">
     <string>Получить данные</string>
+   </property>
+  </action>
+  <action name="action_6">
+   <property name="text">
+    <string>Информация о проекте</string>
    </property>
   </action>
  </widget>

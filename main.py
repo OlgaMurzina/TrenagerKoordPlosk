@@ -51,6 +51,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.action_2.triggered.connect(self.addFile)
         self.action_3.triggered.connect(self.delFile)
         self.action_5.triggered.connect(self.viuwer)
+        self.action_6.triggered.connect(self.about)
 
     # обработка событий из строки Меню-Файл
     def addFile(self):
@@ -110,28 +111,32 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.msgBox1 = QMessageBox()
         self.msgBox1.setText("Файл удален из базы данных")
         self.msgBox1.setWindowTitle("Удаление файла")
-        #self.msgBox.setStandardButtons(QMessageBox.Ok)
+        # self.msgBox.setStandardButtons(QMessageBox.Ok)
         self.msgBox1.buttonClicked.connect(self.msgbtn2)
         self.msgBox1.exec()
         self.change_img()
 
     def msgbtn2(self):
         self.lstWidget.hide()
-        #self.lstWidget.clear()
-        #self.lstWidget.addItems(self.images)
-        #self.lstWidget.show()
+
+    def about(self):
+        self.msgBox.setWindowTitle("О программе")
+        self.msgBox.setText(
+            "Тренажер для получения и проверки навыка чтения координат точек на плоскости. "
+            "Рекомендовано ученикам 5-6 класса для закрепления полученных знаний на уроках информатики и математики.\nАвтор - Мурзина Ольга Ивановна")
+        self.msgBox.exec()
 
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
         result = self.cur.execute(
             """SELECT familia, name, count, average_mark FROM childrens ORDER BY average_mark DESC""").fetchall()
-        #text = '{:20}'.format('Фамилия') +'{:20}'.format('Имя') + '{:20}'.format('Вход') + '{:20}'.format('Оценка') + '\n'
+        # text = '{:20}'.format('Фамилия') +'{:20}'.format('Имя') + '{:20}'.format('Вход') + '{:20}'.format('Оценка') + '\n'
         text = "{:10}{:10}{:10}{:10}\n".format('Фамилия', 'Имя', 'Вход', 'Оценка')
         for x in result[:10]:
             text += '{:10}{:10}{:10}{:10}\n'.format(x[0], x[1], str(x[2]), str(x[3])[:3])
         self.msgBox.setWindowTitle("ТОП-10:")
         # self.msgBox.resize(200, 200)
-        #print(text)
+        # print(text)
         self.msgBox.setText(text)
         font = self.msgBox.font()
         font.setFamily("Courier New")
