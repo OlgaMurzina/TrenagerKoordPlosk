@@ -113,13 +113,20 @@ class MyWidget(QMainWindow, Ui_MainWindow):
 
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
-        result = self.cur.execute("""SELECT familia, name, count, average_mark FROM childrens""").fetchall()
-        text = 'Фамилия Имя Вход Оценка\n'
-        for x in result:
-            text += x[0] + ' ' + x[1] + '   ' + str(x[2]) + '   ' + str(x[3]) + '\n'
-        self.msgBox.setWindowTitle("Ответ на запрос:")
+        result = self.cur.execute(
+            """SELECT familia, name, count, average_mark FROM childrens ORDER BY average_mark DESC""").fetchall()
+        #text = '{:20}'.format('Фамилия') +'{:20}'.format('Имя') + '{:20}'.format('Вход') + '{:20}'.format('Оценка') + '\n'
+        text = "{:10}{:10}{:10}{:10}\n".format('Фамилия', 'Имя', 'Вход', 'Оценка')
+        for x in result[:10]:
+            text += '{:10}{:10}{:10}{:10}\n'.format(x[0], x[1], str(x[2]), str(x[3])[:3])
+        self.msgBox.setWindowTitle("ТОП-10:")
         # self.msgBox.resize(200, 200)
+        #print(text)
         self.msgBox.setText(text)
+        font = self.msgBox.font()
+        font.setFamily("Courier New")
+        font.setPointSize(11)
+        self.msgBox.setFont(font)
         self.msgBox.exec()
 
     def change_img(self):
