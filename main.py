@@ -101,15 +101,25 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         self.lstWidget.addItems(self.images)
         self.lstWidget.itemClicked.connect(self._on_item_clicked)
         self.lstWidget.show()
+        self.change_img()
 
     def _on_item_clicked(self, item):
         # обработка выбора файла на удаление и пометка файла в базе флажком
         self.cur.execute("""UPDATE files SET del = ? WHERE image = ?""", (1, item.text()))
         self.con.commit()
-        self.msgBox.setText("Файл удален из базы данных")
-        self.msgBox.setWindowTitle("Удаление файла")
-        self.msgBox.exec()
+        self.msgBox1 = QMessageBox()
+        self.msgBox1.setText("Файл удален из базы данных")
+        self.msgBox1.setWindowTitle("Удаление файла")
+        #self.msgBox.setStandardButtons(QMessageBox.Ok)
+        self.msgBox1.buttonClicked.connect(self.msgbtn2)
+        self.msgBox1.exec()
         self.change_img()
+
+    def msgbtn2(self):
+        self.lstWidget.hide()
+        #self.lstWidget.clear()
+        #self.lstWidget.addItems(self.images)
+        #self.lstWidget.show()
 
     def viuwer(self):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
@@ -133,6 +143,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # блок выбора рисунка из выпадающего списка, сформированного по БД
         self.images = list(
             map(lambda x: x[0], self.cur.execute("""SELECT image FROM files WHERE del = 0 """).fetchall()))
+        self.comboBox.clear()
         self.comboBox.addItems(self.images)
         # вызов загрузки стартового рисунка - первого в списке комбобокса
         self.select_task(self.images[0])
