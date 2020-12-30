@@ -130,19 +130,17 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # просмотр результатов учеников - выгрузка ФИ, кол-ва тренировок и средней оценки из БД
         result = self.cur.execute(
             """SELECT familia, name, count, average_mark FROM childrens ORDER BY average_mark DESC""").fetchall()
-        # text = '{:20}'.format('Фамилия') +'{:20}'.format('Имя') + '{:20}'.format('Вход') + '{:20}'.format('Оценка') + '\n'
         text = "{:10}{:10}{:10}{:10}\n".format('Фамилия', 'Имя', 'Вход', 'Оценка')
         for x in result[:10]:
             text += '{:10}{:10}{:10}{:10}\n'.format(x[0], x[1], str(x[2]), str(x[3])[:3])
-        self.msgBox.setWindowTitle("ТОП-10:")
-        # self.msgBox.resize(200, 200)
-        # print(text)
-        self.msgBox.setText(text)
-        font = self.msgBox.font()
+        self.msgBox2 = QMessageBox()
+        self.msgBox2.setWindowTitle("ТОП-10:")
+        self.msgBox2.setText(text)
+        font = self.msgBox2.font()
         font.setFamily("Courier New")
         font.setPointSize(11)
-        self.msgBox.setFont(font)
-        self.msgBox.exec()
+        self.msgBox2.setFont(font)
+        self.msgBox2.exec()
 
     def change_img(self):
         # блок выбора рисунка из выпадающего списка, сформированного по БД
@@ -209,7 +207,8 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                     self.o = 'Неплохо,\nно нужно еще поработать с теорией'
             else:
                 self.o = 'Плохо,\nнужно еще поработать с теорией'
-            t = f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o} Нажмите кнопку 'Закончить работу'"
+            t = f"Работа завершена успешно! Ошибок - {self.error} Оценка - {self.o}"
+            self.msgBox.setIcon(QMessageBox.Information)
             self.msgBox.setWindowTitle("Завершение работы")
             self.msgBox.setText(f'{t}')
             self.msgBox.exec()
@@ -221,20 +220,17 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # в идеале - диалоговое окно про все равно закончить
         self.count_finish += 1
         self.msgBox.setWindowTitle("Завершение работы")
-        t = ':-)'
         if not self.fam:
             t = "Нет данных: введите свою фамилию и имя!"
             self.msgBox.setWindowTitle("Данные ребенка")
             self.count_finish = 0
         elif self.count_koord == 0 and self.count_finish == 1:
-            t = "Работа не началась. Чтобы выйти из программы, нажмите 'Ok'.Чтобы продолжить, нажмите 'Cancel'"
-            self.msgBox.setWindowTitle("Завершение работы")
+            t = "Работа не началась. Чтобы выйти из программы, нажмите 'Ok'. Чтобы продолжить, нажмите 'Cancel'"
             self.msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
             self.msgBox.buttonClicked.connect(self.msgbtn)
         elif self.coord and self.count_finish == 1:
             self.count_finish = 0
             t = "Вы не закончили уражнение. Чтобы выйти из программы, нажмите 'Ok'.Чтобы продолжить, нажмите 'Cancel'"
-            self.msgBox.setWindowTitle("Завершение работы")
             self.msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
             self.msgBox.buttonClicked.connect(self.msgbtn)
         elif not self.coord and self.count_finish == 1:
@@ -260,12 +256,11 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                 """UPDATE childrens SET count = ?, images = ?, average_mark = ? WHERE familia = ? and name = ?""",
                 (n[0] + 1, id_im[0], str((float(n[1]) + float(self.o)) / 2), self.fam, self.name))
             self.con.commit()
-            t = 'Данные о работе успешно внесены в базу данных!'
-            self.msgBox.setWindowTitle("Завершение работы")
-            self.msgBox.setIcon(QMessageBox.Information)
-            self.msgBox.setText(f'{t}')
-            self.msgBox.exec()
-            sys.exit(app.exec_())
+            t = 'Данные о работе успешно внесены в базу данных! Для выхода - ОК, для продолжения работы - Cancel'
+            self.msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            self.msgBox.buttonClicked.connect(self.msgbtn)
+        else:
+            t = ':-) Удачи!'
         self.msgBox.setIcon(QMessageBox.Information)
         self.msgBox.setText(f'{t}')
         self.msgBox.exec()
@@ -276,6 +271,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
             sys.exit(app.exec_())
         else:
             self.count_finish = 0
+            self.count_koord = 0
 
     def select_task(self, text):
         # работа с базой рисунков - определение пути к файлу из БД
