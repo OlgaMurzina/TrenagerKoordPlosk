@@ -186,6 +186,8 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                     self.error += 1
             self.lineEdit_2.setText('')
             self.lineEdit.setText('')
+            if not self.coord:
+                self.label_8.setText("Все точки перечислены.\nНажмите кнопку 'Закончить работу'")
         except ValueError:
             self.label_8.setText("Нажмите кнопку\nЗакончить работу")
 
@@ -219,7 +221,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
         # в идеале - диалоговое окно про все равно закончить
         self.count_finish += 1
         self.msgBox.setWindowTitle("Завершение работы")
-        t = 'Спасибо за работу! Нажмите "Закончить работу"'
+        t = ':-)'
         if not self.fam:
             t = "Нет данных: введите свою фамилию и имя!"
             self.msgBox.setWindowTitle("Данные ребенка")
@@ -345,7 +347,7 @@ class MyWidget(QMainWindow, Ui_MainWindow):
                         (self.fam, self.name))
                     self.mess = 'Фамилия и имя успешно внесены в базу данных!'
                 else:
-                    self.mess = 'Фамилия и имя уже есть в базе данных :)'
+                    self.mess = 'Рады видеть Вас снова!'
                 self.con.commit()
             self.msgBox.setIcon(QMessageBox.Information)
             self.msgBox.setWindowTitle("Ввод данных")

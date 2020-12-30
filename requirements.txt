@@ -1,0 +1,7 @@
+numpy==1.19.4
+PyQt5==5.15.1
+PyQt5-sip==12.8.1
+PyQt5-stubs==5.14.2.2
+PyQt5Designer==5.14.1
+pyqtgraph==0.11.0
+qtgui==0.0.1
